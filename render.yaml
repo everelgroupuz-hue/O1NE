@@ -1,0 +1,30 @@
+services:
+  # ─── Frontend (Node.js Web Service) ──────────────────────────────────────
+  - type: web_service
+    name: kupi-frontend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: node server.cjs
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+
+  # ─── Telegram Bot (Background Worker) ────────────────────────────────────
+  - type: worker
+    name: kupi-bot
+    runtime: python
+    buildCommand: cd bot && pip install -r requirements.txt
+    startCommand: cd bot && python main.py
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_ID
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: WEBAPP_URL
+        value: https://kupi-frontend.onrender.com
