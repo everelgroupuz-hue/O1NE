@@ -135,10 +135,15 @@ export const ShareCard = ({ isOpen, onClose, product, language }: ShareCardProps
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-end sm:justify-center bg-black/50 backdrop-blur-sm pointer-events-auto" onClick={onClose}>
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-end sm:justify-center bg-black/50 backdrop-blur-sm pointer-events-auto"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+        onClick={onClose}
+      >
         <div
-          className="bg-white w-full sm:max-w-[400px] rounded-t-3xl sm:rounded-3xl overflow-hidden animate-slide-up"
+          className="bg-white w-full sm:max-w-[400px] max-h-[85vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto animate-slide-up"
           onClick={(e) => e.stopPropagation()}
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
         >
           {/* ─── Card Preview ─── */}
           <div className="bg-gray-50 p-4">
