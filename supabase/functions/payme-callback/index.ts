@@ -4,6 +4,7 @@ import { notifyPaymentSuccess, notifyPaymentFailed } from "../_shared/telegram-n
 
 function getCorsHeaders(req: Request) {
   const allowedOrigins = [
+    'https://o1ne.onrender.com',
     'https://one-iota-three.vercel.app',
     'https://one-phi-blush.vercel.app',
     'http://localhost:5173',
