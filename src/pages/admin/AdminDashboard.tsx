@@ -12,7 +12,7 @@ import {
   ROLE_LABELS,
 } from '../../lib/auth';
 import { formatPrice } from '../../lib/utils';
-import { type OrderItem, type Database } from '../../lib/supabase';
+import { type Database } from '../../lib/supabase';
 import { getStatusInfo } from '../../lib/orderStatuses';
 import { useAdminConversations } from '../../lib/supabase/hooks';
 import { getAdminSession } from '../../lib/adminApi';

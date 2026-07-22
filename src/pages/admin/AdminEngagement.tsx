@@ -4,7 +4,7 @@ import { ArrowLeft, Heart, Eye, ShoppingCart, TrendingUp, Users, Package, BarCha
 import { getCurrentAdmin, ROLE_LABELS } from '../../lib/auth';
 import { formatPrice, getLocalizedValue } from '../../lib/utils';
 import { useAllProductAnalytics } from '../../lib/supabase/hooks';
-import { adminQueries, getAdminSession } from '../../lib/adminApi';
+import { adminQueries } from '../../lib/adminApi';
 
 type SortKey = 'views' | 'favorites' | 'cart_adds' | 'orders' | 'purchases' | 'returns' | 'conversion';
 

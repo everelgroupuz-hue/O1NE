@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import { getTelegramUser, readyApp, expandApp, refreshTg } from './lib/telegram';
+import { getTelegramUser, refreshTg } from './lib/telegram';
 import { useAppStore } from './store/useAppStore';
 
 // Global error handlers
@@ -24,12 +24,12 @@ async function initializeUser(attempt = 1): Promise<void> {
 
     try {
       const { userQueries } = await import('./lib/supabase/hooks');
-      const result = await userQueries.upsert(tgUser.id, {
+      await userQueries.upsert(tgUser.id, {
         first_name: tgUser.first_name || '',
         username: tgUser.username || null,
         language: tgUser.language_code || 'ru',
       });
-    } catch (err) {
+    } catch {
       if (attempt < 3) {
         await new Promise((r) => setTimeout(r, attempt * 1000));
         return initializeUser(attempt + 1);

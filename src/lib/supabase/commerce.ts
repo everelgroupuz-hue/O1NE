@@ -138,7 +138,7 @@ export const couponQueries = {
       try {
         await clientApiCall('record_coupon_usage', rpcParams);
         return;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }

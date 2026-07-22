@@ -37,7 +37,7 @@ export const reviewQueries = {
       try {
         const data = await clientApiCall<Review>('insert_review', rpcParams);
         return data;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }

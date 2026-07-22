@@ -33,7 +33,7 @@ export const returnQueries = {
       try {
         const data = await clientApiCall<Return>('insert_return', rpcParams);
         return data;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }
@@ -86,7 +86,7 @@ export const notificationQueries = {
       try {
         await clientApiCall('mark_notification_read', { p_id: id });
         return;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }
@@ -101,7 +101,7 @@ export const notificationQueries = {
       try {
         await clientApiCall('mark_all_notifications_read', { p_telegram_user_id: telegramUserId });
         return;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }

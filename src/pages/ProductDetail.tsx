@@ -7,7 +7,7 @@ import { useCartStore } from '../store/useCartStore';
 import { useProduct, useIncrementViews, useProductReviews, useProductRating, useFavoriteIds, useToggleFavorite, useCreateReview, useUploadReviewPhoto, useTrackProductEvent } from '../lib/supabase/hooks';
 import { useAppStore } from '../store/useAppStore';
 import { formatPrice, getLocalizedValue } from '../lib/utils';
-import { haptic, tg } from '../lib/telegram';
+import { haptic } from '../lib/telegram';
 import { WishlistToggle } from '../components/WishlistToggle';
 import { ShareCard } from '../components/ShareCard';
 import { toast } from '../components/Toast';

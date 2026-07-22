@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Send, Copy, Check, ExternalLink } from 'lucide-react';
+import { Send, Copy, Check, ExternalLink } from 'lucide-react';
 import { Portal } from './Portal';
 import { formatPrice, getLocalizedValue } from '../lib/utils';
 import { haptic, tg } from '../lib/telegram';

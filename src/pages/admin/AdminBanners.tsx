@@ -11,7 +11,6 @@ import type { Database } from '../../lib/supabase';
 
 const BANNER_WIDTH = 1920;
 const BANNER_HEIGHT = 566;
-const BANNER_ASPECT_RATIO = BANNER_WIDTH / BANNER_HEIGHT;
 
 const GRADIENT_OPTIONS = [
   { label: 'Синий', value: 'from-blue-600 to-cyan-500' },

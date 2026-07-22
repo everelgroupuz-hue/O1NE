@@ -1,15 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, Clock, User, MapPin, Package, History, Inbox, Hourglass, Archive, Search, EyeOff, ExternalLink, MessageSquare, Send } from 'lucide-react';
-import { supabase, Database, type StatusHistoryEntry, type CustomerInfo, type OrderItem } from '../../lib/supabase';
+import { Database, type StatusHistoryEntry, type CustomerInfo, type OrderItem } from '../../lib/supabase';
 import { getCurrentAdmin, ROLE_LABELS } from '../../lib/auth';
 import { formatPrice } from '../../lib/utils';
 import { toast } from '../../components/Toast';
 import { ORDER_STATUSES, getStatusInfo } from '../../lib/orderStatuses';
-import { adminQueries } from '../../lib/adminApi';
+import { adminQueries, getAdminSession } from '../../lib/adminApi';
 import { auditLogQueries } from '../../lib/supabase/queries';
 import { useSendMessage } from '../../lib/supabase/hooks';
-import { getAdminSession } from '../../lib/adminApi';
 
 type Order = Database['public']['Tables']['orders']['Row'] & {
   visible_to_client?: boolean;

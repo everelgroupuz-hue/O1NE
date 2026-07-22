@@ -39,7 +39,7 @@ export const userQueries = {
       try {
         const data = await clientApiCall<User>('upsert_user', rpcParams);
         return data;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }
@@ -66,7 +66,7 @@ export const userQueries = {
       try {
         const data = await clientApiCall<User>('upsert_user', rpcParams);
         return data;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }
@@ -143,7 +143,7 @@ export const favoriteQueries = {
       try {
         await clientApiCall('add_favorite', rpcParams);
         return;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }
@@ -159,7 +159,7 @@ export const favoriteQueries = {
       try {
         await clientApiCall('remove_favorite', rpcParams);
         return;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }
@@ -180,7 +180,7 @@ export const favoriteQueries = {
       try {
         await clientApiCall('update_favorite', rpcParams);
         return;
-      } catch (err) {
+      } catch {
         // fallback to direct RPC
       }
     }
