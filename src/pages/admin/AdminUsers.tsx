@@ -213,8 +213,7 @@ export const AdminUsers = () => {
     if (!confirm('Удалить сотрудника? Действие необратимо.')) return;
     const account = adminAccounts.find(a => a.id === id);
     try {
-      const { error: err } = await supabase.from('admin_accounts').delete().eq('id', id);
-      if (err) throw err;
+      await adminQueries.deleteAdminAccount(id);
       setAdminAccounts((prev) => prev.filter((u) => u.id !== id));
       setSuccess('Сотрудник удалён');
       setTimeout(() => setSuccess(''), 3000);

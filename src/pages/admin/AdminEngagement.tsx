@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Heart, Eye, ShoppingCart, TrendingUp, Users, Package, BarChart3, RefreshCw, RotateCcw } from 'lucide-react';
 import { getCurrentAdmin, ROLE_LABELS } from '../../lib/auth';
-import { supabase } from '../../lib/supabase';
 import { formatPrice, getLocalizedValue } from '../../lib/utils';
 import { useAllProductAnalytics } from '../../lib/supabase/hooks';
+import { adminQueries, getAdminSession } from '../../lib/adminApi';
 
 type SortKey = 'views' | 'favorites' | 'cart_adds' | 'orders' | 'purchases' | 'returns' | 'conversion';
 
@@ -40,16 +40,13 @@ export const AdminEngagement = () => {
 
   const loadData = useCallback(async () => {
     try {
-      // Ensure all products have analytics rows
-      await supabase.rpc('ensure_product_analytics');
+      const users = await adminQueries.getUsers() as Array<{ id: string; created_at: string }> | null;
+      const allUsers = users ?? [];
 
-      // Load user stats
       const now = new Date();
       const sevenDaysAgo = new Date(now);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      const { data: users } = await supabase.from('users').select('id, created_at');
-      const allUsers = users ?? [];
       const newUsers = allUsers.filter((u) => new Date(u.created_at) >= sevenDaysAgo).length;
 
       // Calculate overall conversion from analytics data

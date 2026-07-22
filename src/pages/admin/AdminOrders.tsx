@@ -108,10 +108,10 @@ export const AdminOrders = () => {
 
       const telegramIds = [...new Set(ordersData.map(o => o.telegram_user_id).filter(Boolean))];
       if (telegramIds.length > 0) {
-        const { data: users } = await supabase.from('users').select('telegram_id, first_name, username, phone').in('telegram_id', telegramIds);
+        const { data: users } = await adminQueries.getUsers() as Array<{ telegram_id: number; first_name: string; username: string | null; phone: string | null }> | null;
         if (users) {
           const map: Record<number, { first_name: string; username: string | null; phone: string | null }> = {};
-          users.forEach(u => { map[u.telegram_id] = { first_name: u.first_name, username: u.username, phone: u.phone }; });
+          users.filter(u => telegramIds.includes(u.telegram_id)).forEach(u => { map[u.telegram_id] = { first_name: u.first_name, username: u.username, phone: u.phone }; });
           setUserMap(map);
         }
       }

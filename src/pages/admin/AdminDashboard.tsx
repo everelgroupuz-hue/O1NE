@@ -12,9 +12,10 @@ import {
   ROLE_LABELS,
 } from '../../lib/auth';
 import { formatPrice } from '../../lib/utils';
-import { supabase, type OrderItem, type Database } from '../../lib/supabase';
+import { type OrderItem, type Database } from '../../lib/supabase';
 import { getStatusInfo } from '../../lib/orderStatuses';
 import { useAdminConversations } from '../../lib/supabase/hooks';
+import { getAdminSession } from '../../lib/adminApi';
 
 interface SalesDay { date: string; revenue: number; orders: number }
 interface TopProduct { name: string; orders: number; revenue: number }
@@ -80,102 +81,51 @@ export const AdminDashboard = () => {
   const unreadMessages = conversations.reduce((sum: number, c: { unread_count: number }) => sum + (c.unread_count || 0), 0);
 
   const loadPendingCounts = useCallback(async () => {
-    const [ordersRes, reviewsRes, returnsRes] = await Promise.all([
-      supabase.from('orders').select('id', { count: 'exact', head: true }).eq('status', 'new'),
-      supabase.from('reviews').select('id', { count: 'exact', head: true }).eq('is_approved', false),
-      supabase.from('returns').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-    ]);
-    setPendingCounts({
-      orders: ordersRes.count ?? 0,
-      reviews: reviewsRes.count ?? 0,
-      returns: returnsRes.count ?? 0,
-    });
+    try {
+      const session = getAdminSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ action: 'pendingCounts', admin_session: session }),
+      });
+      const { data } = await res.json();
+      if (data) setPendingCounts({ orders: data.orders ?? 0, reviews: data.reviews ?? 0, returns: data.returns ?? 0 });
+    } catch { /* non-critical */ }
   }, []);
 
   const loadStats = useCallback(async () => {
     setLoading(true);
     try {
-      const now = new Date();
-      let dateFrom: string | null = null;
-
-      if (period === '7d') {
-        const d = new Date(now);
-        d.setDate(d.getDate() - 6);
-        dateFrom = d.toISOString().slice(0, 10);
-      } else if (period === '30d') {
-        const d = new Date(now);
-        d.setDate(d.getDate() - 29);
-        dateFrom = d.toISOString().slice(0, 10);
-      }
-
-      let ordersQuery = supabase
-        .from('orders')
-        .select('total_amount, status, created_at, items', { count: 'exact' });
-      if (dateFrom) {
-        ordersQuery = ordersQuery.gte('created_at', dateFrom + 'T00:00:00');
-      }
-
-      const [ordersRes, productsRes, recentRes, bannersRes, usersRes] = await Promise.all([
-        ordersQuery,
-        supabase.from('products').select('id', { count: 'exact' }),
-        supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(6),
-        supabase.from('banners').select('id', { count: 'exact' }).eq('is_active', true),
-        supabase.from('users').select('id', { count: 'exact' }),
-      ]);
-
-      const allOrders = ordersRes.data ?? [];
-      const totalRevenue = allOrders.reduce((s, o) => s + Number(o.total_amount), 0);
-      const avgOrderValue = allOrders.length ? totalRevenue / allOrders.length : 0;
-
-      const days = period === '7d' ? 7 : period === '30d' ? 30 : 14;
-      const salesByDay: SalesDay[] = Array.from({ length: days }, (_, i) => {
-        const d = new Date(now);
-        d.setDate(d.getDate() - (days - 1 - i));
-        const dateStr = d.toISOString().slice(0, 10);
-        const dayOrders = allOrders.filter(o => o.created_at.slice(0, 10) === dateStr);
-        return {
-          date: dateStr,
-          revenue: dayOrders.reduce((s, o) => s + Number(o.total_amount), 0),
-          orders: dayOrders.length,
-        };
+      const session = getAdminSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-api`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ action: 'dashboardStats', period, admin_session: session }),
       });
-
-      const ordersByStatus: Record<string, number> = {};
-      allOrders.forEach(o => {
-        ordersByStatus[o.status] = (ordersByStatus[o.status] ?? 0) + 1;
-      });
-
-      const productMap: Record<string, { name: string; orders: number; revenue: number }> = {};
-      allOrders.forEach(order => {
-        const items = order.items as OrderItem[];
-        if (!Array.isArray(items)) return;
-        items.forEach((item: OrderItem) => {
-          const key = item.productId ?? 'unknown';
-          const itemName = typeof item.name === 'object' ? (item.name as { ru: string; uz: string }).ru : item.name;
-          if (!productMap[key]) {
-            productMap[key] = { name: itemName ?? key, orders: 0, revenue: 0 };
-          }
-          productMap[key].orders += item.quantity ?? 1;
-          productMap[key].revenue += (item.price ?? 0) * (item.quantity ?? 1);
+      const { data } = await res.json();
+      if (data) {
+        setStats({
+          totalOrders: data.totalOrders ?? 0,
+          totalRevenue: data.totalRevenue ?? 0,
+          totalProducts: data.totalProducts ?? 0,
+          totalUsers: data.totalUsers ?? 0,
+          recentOrders: data.recentOrders ?? [],
+          salesByDay: data.salesByDay ?? [],
+          topProducts: data.topProducts ?? [],
+          ordersByStatus: data.ordersByStatus ?? {},
+          avgOrderValue: data.avgOrderValue ?? 0,
+          activeBanners: data.activeBanners ?? 0,
+          newUsersCount: data.newUsersCount ?? 0,
         });
-      });
-      const topProducts = Object.values(productMap)
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 5);
-
-      setStats({
-        totalOrders: ordersRes.count ?? 0,
-        totalRevenue,
-        totalProducts: productsRes.count ?? 0,
-        totalUsers: usersRes.count ?? 0,
-        recentOrders: recentRes.data ?? [],
-        salesByDay,
-        topProducts,
-        ordersByStatus,
-        avgOrderValue,
-        activeBanners: bannersRes.count ?? 0,
-        newUsersCount: usersRes.count ?? 0,
-      });
+      }
     } finally {
       setLoading(false);
     }

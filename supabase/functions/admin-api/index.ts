@@ -80,10 +80,10 @@ Deno.serve(async (req: Request) => {
     );
 
     const body = await req.json();
-    const { action, table, data, filters, id, admin_session } = body;
+    const { action, table, data, filters, id, admin_session, period } = body;
 
     // Actions that don't require a table parameter
-    const TABLELESS_ACTIONS = ["processReturn"];
+    const TABLELESS_ACTIONS = ["processReturn", "dashboardStats", "pendingCounts"];
 
     if (!action || (!table && !TABLELESS_ACTIONS.includes(action))) {
       return new Response(
@@ -101,7 +101,7 @@ Deno.serve(async (req: Request) => {
 
     // ALL actions require a valid admin session
     const SENSITIVE_TABLES = ["admin_accounts", "orders", "users", "audit_log", "notifications", "returns"];
-    const needsAuth = MUTATION_ACTIONS.includes(action) || SENSITIVE_TABLES.includes(table) || TABLELESS_ACTIONS.includes(action);
+    const needsAuth = MUTATION_ACTIONS.includes(action) || SENSITIVE_TABLES.includes(table || "") || TABLELESS_ACTIONS.includes(action);
     if (needsAuth) {
       const check = await verifyAdminSession(supabase, admin_session);
       if (!check.ok) {
@@ -410,6 +410,114 @@ Deno.serve(async (req: Request) => {
             } catch { /* non-critical */ }
           }
         }
+        break;
+      }
+
+      case "pendingCounts": {
+        const [ordersRes, reviewsRes, returnsRes] = await Promise.all([
+          supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "new"),
+          supabase.from("reviews").select("id", { count: "exact", head: true }).eq("is_approved", false),
+          supabase.from("returns").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        ]);
+        result = {
+          orders: ordersRes.count ?? 0,
+          reviews: reviewsRes.count ?? 0,
+          returns: returnsRes.count ?? 0,
+        };
+        break;
+      }
+
+      case "dashboardStats": {
+        const now = new Date();
+        let dateFrom: string | null = null;
+
+        if (period === "7d") {
+          const d = new Date(now);
+          d.setDate(d.getDate() - 6);
+          dateFrom = d.toISOString().slice(0, 10);
+        } else if (period === "30d") {
+          const d = new Date(now);
+          d.setDate(d.getDate() - 29);
+          dateFrom = d.toISOString().slice(0, 10);
+        }
+
+        let ordersQuery = supabase
+          .from("orders")
+          .select("total_amount, status, created_at, items", { count: "exact" });
+        if (dateFrom) {
+          ordersQuery = ordersQuery.gte("created_at", dateFrom + "T00:00:00");
+        }
+
+        const [ordersRes, productsRes, recentRes, bannersRes, usersRes, pendingOrdersRes, pendingReviewsRes, pendingReturnsRes] = await Promise.all([
+          ordersQuery,
+          supabase.from("products").select("id", { count: "exact" }),
+          supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(6),
+          supabase.from("banners").select("id", { count: "exact" }).eq("is_active", true),
+          supabase.from("users").select("id", { count: "exact" }),
+          supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "new"),
+          supabase.from("reviews").select("id", { count: "exact", head: true }).eq("is_approved", false),
+          supabase.from("returns").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        ]);
+
+        const allOrders = ordersRes.data ?? [];
+        const totalRevenue = allOrders.reduce((s, o) => s + Number(o.total_amount), 0);
+        const avgOrderValue = allOrders.length ? totalRevenue / allOrders.length : 0;
+
+        const days = period === "7d" ? 7 : period === "30d" ? 30 : 14;
+        const salesByDay = Array.from({ length: days }, (_, i) => {
+          const d = new Date(now);
+          d.setDate(d.getDate() - (days - 1 - i));
+          const dateStr = d.toISOString().slice(0, 10);
+          const dayOrders = allOrders.filter(o => o.created_at?.slice(0, 10) === dateStr);
+          return {
+            date: dateStr,
+            revenue: dayOrders.reduce((s, o) => s + Number(o.total_amount), 0),
+            orders: dayOrders.length,
+          };
+        });
+
+        const ordersByStatus: Record<string, number> = {};
+        allOrders.forEach(o => {
+          ordersByStatus[o.status] = (ordersByStatus[o.status] ?? 0) + 1;
+        });
+
+        const productMap: Record<string, { name: string; orders: number; revenue: number }> = {};
+        allOrders.forEach(order => {
+          const items = order.items;
+          if (!Array.isArray(items)) return;
+          items.forEach((item: Record<string, unknown>) => {
+            const key = (item.productId as string) ?? "unknown";
+            const rawName = item.name;
+            const itemName = typeof rawName === "object" && rawName !== null
+              ? ((rawName as Record<string, string>).ru ?? key)
+              : String(rawName ?? key);
+            if (!productMap[key]) {
+              productMap[key] = { name: itemName, orders: 0, revenue: 0 };
+            }
+            productMap[key].orders += (item.quantity as number) ?? 1;
+            productMap[key].revenue += ((item.price as number) ?? 0) * ((item.quantity as number) ?? 1);
+          });
+        });
+        const topProducts = Object.values(productMap)
+          .sort((a, b) => b.revenue - a.revenue)
+          .slice(0, 5);
+
+        result = {
+          totalOrders: ordersRes.count ?? 0,
+          totalRevenue,
+          totalProducts: productsRes.count ?? 0,
+          totalUsers: usersRes.count ?? 0,
+          recentOrders: recentRes.data ?? [],
+          salesByDay,
+          topProducts,
+          ordersByStatus,
+          avgOrderValue,
+          activeBanners: bannersRes.count ?? 0,
+          newUsersCount: usersRes.count ?? 0,
+          pendingOrders: pendingOrdersRes.count ?? 0,
+          pendingReviews: pendingReviewsRes.count ?? 0,
+          pendingReturns: pendingReturnsRes.count ?? 0,
+        };
         break;
       }
 

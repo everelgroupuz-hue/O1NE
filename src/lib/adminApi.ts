@@ -197,6 +197,9 @@ export const adminQueries = {
   updateAdminAccount: (id: string, updates: Record<string, unknown>) =>
     adminApiCall('update', 'admin_accounts', { id, data: updates }),
 
+  deleteAdminAccount: (id: string) =>
+    adminApiCall('delete', 'admin_accounts', { id }),
+
   // ── Collections ──────────────────────────────────────────────────────────
   getCollections: () => adminApiCall('select', 'product_collections'),
 
