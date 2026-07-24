@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { ProductCard } from './ProductCard';
 import { useCollectionProducts, useFavoriteIds } from '../lib/supabase/hooks';
+import { getTelegramUser } from '../lib/telegram';
 import { useAppStore } from '../store/useAppStore';
 import { getLocalizedValue } from '../lib/utils';
 import type { ProductCollection } from '../lib/supabase/queries';
@@ -11,7 +12,8 @@ interface CollectionSectionProps {
 }
 
 export const CollectionSection = ({ collection, language }: CollectionSectionProps) => {
-  const userId = useAppStore((s) => s.getUserId());
+  const getUserId = useAppStore((s) => s.getUserId);
+  const userId = getTelegramUser()?.id || getUserId();
   const { data: favoriteIds = [] } = useFavoriteIds(userId);
   const productIds = collection.product_ids ?? [];
   const { data: products = [], isLoading } = useCollectionProducts(productIds);

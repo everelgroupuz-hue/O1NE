@@ -9,7 +9,7 @@ import { useCartStore } from '../store/useCartStore';
 import { useAppStore } from '../store/useAppStore';
 import { useCreatePayment, useDeliveryZones, useUserProfile, useUpdateProfile } from '../lib/supabase/hooks';
 import { formatPrice, getLocalizedValue, validatePhone } from '../lib/utils';
-import { haptic, getTelegramUser, tg, refreshTg } from '../lib/telegram';
+import { haptic, tg, refreshTg } from '../lib/telegram';
 import { toast } from '../components/Toast';
 import type { DeliveryZone } from '../lib/supabase/queries';
 
@@ -17,11 +17,11 @@ export const Checkout = () => {
   const { t, language } = useTranslation();
   const navigate = useNavigate();
   const { items, getTotalPrice, clearCart } = useCartStore();
-  const getUserId = useAppStore((state) => state.getUserId);
   const setTelegramUserId = useAppStore((state) => state.setTelegramUserId);
+  const getUserId = useAppStore((state) => state.getUserId);
 
-  refreshTg();
-  const user = getTelegramUser();
+  useEffect(() => { refreshTg(); }, []);
+  const user = tg?.initDataUnsafe?.user;
   const userId = user?.id || getUserId();
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export const Checkout = () => {
 
   const createPaymentMutation = useCreatePayment();
   const { data: deliveryZones = [], isLoading: zonesLoading } = useDeliveryZones(true);
-  const { data: userProfile } = useUserProfile(userId || 0);
+  const { data: userProfile } = useUserProfile(userId || getUserId());
   const updateProfileMutation = useUpdateProfile();
 
   const [step, setStep] = useState<'info' | 'delivery' | 'payment'>('info');
@@ -136,41 +136,16 @@ export const Checkout = () => {
 
     try {
       refreshTg();
-      const freshUser = getTelegramUser();
-      if (freshUser?.id) {
-        setTelegramUserId(freshUser.id);
-      }
-
-      let finalUserId = freshUser?.id || userId || getUserId();
-
+      const freshUser = tg?.initDataUnsafe?.user;
+      const finalUserId = freshUser?.id || getUserId();
       if (!finalUserId) {
-        for (let attempt = 1; attempt <= 3 && !finalUserId; attempt++) {
-          await new Promise(r => setTimeout(r, attempt * 300));
-          refreshTg();
-          const retryUser = getTelegramUser();
-          if (retryUser?.id) {
-            setTelegramUserId(retryUser.id);
-            finalUserId = retryUser.id;
-          } else {
-            finalUserId = getUserId();
-          }
-        }
-      }
-
-      if (!finalUserId) {
-        const liveUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-        if (liveUser?.id) {
-          setTelegramUserId(liveUser.id);
-          finalUserId = liveUser.id;
-        }
-      }
-
-      if (!finalUserId) {
-        console.error('[Checkout] No user ID available');
-        toast.error(language === 'ru' ? 'Откройте приложение через Telegram-бот' : 'Telegram bot orqali oching');
+        toast.error(language === 'ru' ? 'Пожалуйста, зарегистрируйтесь' : "Iltimos, ro'yxatdan o'ting");
         setLoading(false);
         submittingRef.current = false;
         return;
+      }
+      if (freshUser?.id) {
+        setTelegramUserId(freshUser.id);
       }
 
       const city = selectedZone

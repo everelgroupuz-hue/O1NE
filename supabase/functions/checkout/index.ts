@@ -132,7 +132,7 @@ Deno.serve(async (req: Request) => {
       payment_method: body.payment_method,
     });
 
-    // Verify Telegram init_data for security
+    // Verify Telegram init_data for security (optional when using phone-based auth)
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
     if (botToken && body.init_data) {
       console.log("[Checkout] Verifying Telegram init_data...");
@@ -145,8 +145,6 @@ Deno.serve(async (req: Request) => {
         );
       }
       console.log("[Checkout] Telegram init_data verified OK");
-    } else {
-      console.log("[Checkout] Skipping init_data verification", { botToken: !!botToken, initData: !!body.init_data });
     }
 
     // Validate required fields
@@ -211,7 +209,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Validate coupon if provided
-    let discountAmount = body.discount_amount || 0;
+    let discountAmount = 0;
     if (body.coupon_id) {
       const { data: coupon } = await supabase
         .from("coupons")

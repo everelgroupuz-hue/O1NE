@@ -6,12 +6,12 @@ import { Layout } from '../components/Layout';
 import { Portal } from '../components/Portal';
 import { ChatModal } from '../components/ChatModal';
 import { useTranslation } from '../hooks/useTranslation';
-import { useAppStore } from '../store/useAppStore';
 import { useCartStore } from '../store/useCartStore';
 import { useOrders } from '../lib/supabase/hooks';
 import { supabase } from '../lib/supabase';
 import { formatPrice, getLocalizedValue, formatDateTime } from '../lib/utils';
 import { getTelegramUser, haptic } from '../lib/telegram';
+import { useAppStore } from '../store/useAppStore';
 import { getStatusColor, getStatusLabel } from '../lib/orderStatuses';
 import { returnQueries } from '../lib/supabase/queries';
 import { useUploadReturnPhoto } from '../lib/supabase/hooks';
@@ -25,9 +25,9 @@ export const Orders = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const getUserId = useAppStore((state) => state.getUserId);
 
   const user = getTelegramUser();
+  const getUserId = useAppStore((s) => s.getUserId);
   const userId = user?.id || getUserId();
 
   const { data: orders = [], isLoading } = useOrders(userId);

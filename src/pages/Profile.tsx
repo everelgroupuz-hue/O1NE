@@ -23,8 +23,9 @@ const formatDate = (iso: string) =>
 export const Profile = () => {
   const { t, language } = useTranslation();
   const navigate = useNavigate();
-  const { getUserId, registeredName, registeredPhone } = useAppStore();
+  const { registeredName, registeredPhone } = useAppStore();
   const user = getTelegramUser();
+  const getUserId = useAppStore((s) => s.getUserId);
   const userId = user?.id || getUserId();
 
   const { data: orders = [], isLoading: ordersLoading } = useOrders(userId);

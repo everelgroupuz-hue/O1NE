@@ -11,13 +11,13 @@ import { ProductCardSkeleton } from '../components/Skeleton';
 
 export const Home = () => {
   const navigate = useNavigate();
-  const { language, setLanguage, setTelegramUserId, isRegistered } = useAppStore();
+  const { language, setLanguage, setTelegramUserId, isRegistered, getUserId } = useAppStore();
   const [splashDone, setSplashDone] = useState(false);
   const [entered, setEntered] = useState(false);
 
-  refreshTg();
+  useEffect(() => { refreshTg(); }, []);
   const user = getTelegramUser();
-  const userId = user?.id || 0;
+  const userId = user?.id || getUserId();
   const { data: favoriteIds = [] } = useFavoriteIds(userId);
   const { data: banners = [] } = useBanners(true);
   const { data: productsData, isLoading: productsLoading } = useProducts(
@@ -247,7 +247,7 @@ export const Home = () => {
             </div>
             <button
               onClick={() => {
-                tg?.openTelegramLink?.('https://t.me/kupishop');
+                tg?.openTelegramLink?.('https://t.me/KuPi_ShoP_Store_Bot');
               }}
               className="px-3 py-2 rounded-xl bg-accent hover:bg-surface-elevated text-text-inverse text-xs font-bold active:scale-95 transition-all"
             >

@@ -2,12 +2,14 @@ import { ShoppingBag, User, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCartStore } from '../store/useCartStore';
 import { useUnreadNotificationCount } from '../lib/supabase/hooks';
+import { getTelegramUser } from '../lib/telegram';
 import { useAppStore } from '../store/useAppStore';
 import { Logo } from './Logo';
 
 export const Header = () => {
   const totalItems = useCartStore((state) => state.getTotalItems());
-  const userId = useAppStore((s) => s.getUserId());
+  const getUserId = useAppStore((s) => s.getUserId);
+  const userId = getTelegramUser()?.id || getUserId();
   const { data: unreadCount = 0 } = useUnreadNotificationCount(userId);
 
   return (

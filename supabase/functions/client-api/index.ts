@@ -290,7 +290,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Verify Telegram initData for user-scoped actions
+    // Verify Telegram initData for user-scoped actions (optional when using phone-based auth)
     if (USER_SCOPED_ACTIONS.includes(action)) {
       if (botToken && init_data) {
         console.log(`[ClientAPI] Verifying initData for action: ${action}`);
@@ -307,14 +307,6 @@ Deno.serve(async (req: Request) => {
           params.p_telegram_user_id = verification.user.id;
           params.p_telegram_id = verification.user.id;
         }
-      } else if (!botToken) {
-        console.warn("[ClientAPI] TELEGRAM_BOT_TOKEN not set, skipping initData verification");
-      } else {
-        console.error(`[ClientAPI] init_data required for action: ${action}, but not provided`);
-        return new Response(
-          JSON.stringify({ error: "init_data required for this action" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
       }
 
       // Validate telegram_user_id (either p_telegram_user_id or p_telegram_id)
@@ -464,23 +456,6 @@ Deno.serve(async (req: Request) => {
         });
         if (error) throw error;
         result = { ok: true };
-        break;
-      }
-      case "insert_order": {
-        const { data, error } = await supabase.rpc("insert_order", {
-          p_telegram_user_id: params.p_telegram_user_id,
-          p_items: params.p_items,
-          p_total_amount: params.p_total_amount,
-          p_customer_info: params.p_customer_info,
-          p_delivery_type: params.p_delivery_type,
-          p_delivery_cost: params.p_delivery_cost,
-          p_payment_method: params.p_payment_method,
-          p_notes: params.p_notes ?? null,
-          p_coupon_id: params.p_coupon_id ?? null,
-          p_discount_amount: params.p_discount_amount ?? 0,
-        }).single();
-        if (error) throw error;
-        result = data;
         break;
       }
       default:

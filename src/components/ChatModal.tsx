@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X } from 'lucide-react';
 import { useOrderMessages, useSendMessage, useMarkMessagesRead } from '../lib/supabase/hooks';
+import { getTelegramUser, isTelegramWebApp } from '../lib/telegram';
 import { useAppStore } from '../store/useAppStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { formatDateTime } from '../lib/utils';
-import { isTelegramWebApp } from '../lib/telegram';
 import { Portal } from './Portal';
 
 interface ChatModalProps {
@@ -15,7 +15,8 @@ interface ChatModalProps {
 
 export const ChatModal = ({ orderId, isOpen, onClose }: ChatModalProps) => {
   const { language } = useTranslation();
-  const userId = useAppStore((s) => s.getUserId());
+  const getUserId = useAppStore((s) => s.getUserId);
+  const userId = getTelegramUser()?.id || getUserId();
   const { data: messages = [] } = useOrderMessages(orderId);
   const sendMessage = useSendMessage();
   const markRead = useMarkMessagesRead();
