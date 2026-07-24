@@ -100,7 +100,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ALL actions require a valid admin session
-    const SENSITIVE_TABLES = ["admin_accounts", "orders", "users", "audit_log", "notifications", "returns"];
+    const SENSITIVE_TABLES = ["admin_accounts", "orders", "users", "audit_log", "notifications", "returns", "coupons", "delivery_zones"];
     const needsAuth = MUTATION_ACTIONS.includes(action) || SENSITIVE_TABLES.includes(table || "") || TABLELESS_ACTIONS.includes(action);
     if (needsAuth) {
       const check = await verifyAdminSession(supabase, admin_session);

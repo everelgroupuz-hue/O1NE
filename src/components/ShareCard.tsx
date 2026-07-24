@@ -18,7 +18,7 @@ interface ShareCardProps {
   language: 'ru' | 'uz';
 }
 
-const MINI_APP_BASE = 'https://t.me/kupishop';
+const MINI_APP_BASE = 'https://t.me/KuPi_ShoP_Store_Bot';
 
 const copyToClipboard = async (text: string): Promise<boolean> => {
   if (navigator.clipboard && window.isSecureContext) {
@@ -66,8 +66,8 @@ export const ShareCard = ({ isOpen, onClose, product, language }: ShareCardProps
     : '';
   const price = formatPrice(product.price);
   const imageUrl = product.images[0] || '';
-  const deepLink = `${MINI_APP_BASE}?startapp=product_${product.slug}`;
-  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/share/${product.slug}`;
+  const deepLink = `${MINI_APP_BASE}?start=product_${product.slug}`;
+  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/product/${product.slug}`;
 
   const shareText = [
     `🛍 ${productName}`,

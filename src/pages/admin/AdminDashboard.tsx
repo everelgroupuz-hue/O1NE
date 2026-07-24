@@ -61,7 +61,7 @@ const STATUS_BAR_COLORS: Record<string, string> = {
   return_requested: 'bg-rose-500',
   returned: 'bg-slate-400',
   paid: 'bg-green-500',
-  shipped: 'bg0',
+  shipped: 'bg-teal-500',
 };
 
 const PERIOD_LABELS: Record<Period, string> = {

@@ -57,6 +57,15 @@ SUPPORT_MODE_TTL = 3600
 _last_user: dict[int, dict] = {}
 
 
+def _cleanup_support_mode() -> None:
+    now = time.time()
+    expired = [uid for uid, ts in _support_mode.items() if now - ts > SUPPORT_MODE_TTL]
+    for uid in expired:
+        _support_mode.pop(uid, None)
+    if expired:
+        logger.info("Cleaned up %d expired support modes", len(expired))
+
+
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
@@ -109,13 +118,67 @@ def get_first_photo(images) -> str | None:
     if not isinstance(images, list):
         return None
     for url in images:
-        if not isinstance(url, str):
+        if not isinstance(url, str) or not url.strip():
             continue
         clean_url = url.split('?')[0]
         ext = clean_url.rsplit('.', 1)[-1].lower() if '.' in clean_url.rsplit('/', 1)[-1] else ''
-        if ext in SUPPORTED_PHOTO_EXTS:
+        if f".{ext}" in SUPPORTED_PHOTO_EXTS:
             return url
     return None
+
+
+def get_supported_photos(images) -> list[str]:
+    if not isinstance(images, list):
+        return []
+    result = []
+    for url in images:
+        if not isinstance(url, str) or not url.strip():
+            continue
+        clean_url = url.split('?')[0]
+        ext = clean_url.rsplit('.', 1)[-1].lower() if '.' in clean_url.rsplit('/', 1)[-1] else ''
+        if f".{ext}" in SUPPORTED_PHOTO_EXTS:
+            result.append(url)
+    return result
+
+
+async def send_photo_with_fallback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    images,
+    caption: str,
+    reply_markup=None,
+) -> bool:
+    """Try sending photo from images list. Falls back to text on failure."""
+    chat_id = update.effective_chat.id
+    urls = get_supported_photos(images) if isinstance(images, list) else []
+    if isinstance(images, str) and images.strip():
+        urls = [images]
+
+    logger.info("send_photo_with_fallback: %d candidate URLs, raw images=%s", len(urls), repr(images)[:200] if images else "None")
+    for i, url in enumerate(urls):
+        logger.info("send_photo_with_fallback: trying [%d/%d] %s", i + 1, len(urls), url[:150])
+        try:
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=url,
+                caption=caption,
+                parse_mode="HTML",
+                reply_markup=reply_markup,
+            )
+            logger.info("send_photo_with_fallback: SUCCESS for %s", url[:150])
+            return True
+        except Exception as e:
+            logger.warning("sendPhoto failed [%d/%d] %s: %s", i + 1, len(urls), url[:150], e)
+            continue
+
+    logger.warning("send_photo_with_fallback: ALL photos failed, sending text fallback")
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=caption,
+        parse_mode="HTML",
+        reply_markup=reply_markup,
+    )
+    return False
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -138,15 +201,15 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = (
         f"Привет, {user.first_name}! 👋\n\n"
         "Добро пожаловать в <b>ONE</b>!\n"
-        "Мы — магазин модной одежды и аксессуаров с доставкой по всему Узбекистану.\n\n"
-        "─────────────────\n\n"
+        "Модная одежда и аксессуары с доставкой по Узбекистану.\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
         "🛍 <b>Что умеет бот:</b>\n"
-        "• Открыть каталог и сделать заказ\n"
-        "• Отслеживать статус ваших заказов\n"
-        "• Общаться со службой поддержки\n"
-        "• Получать уведомления о заказах и акциях\n\n"
-        "─────────────────\n\n"
-        "Выберите действие из меню ниже 👇"
+        "• Каталог и оформление заказа\n"
+        "• Отслеживание статуса заказов\n"
+        "• Поддержка и консультации\n"
+        "• Уведомления о акциях\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
+        "Выберите действие из меню 👇"
     )
 
     await update.message.reply_text(
@@ -176,38 +239,29 @@ async def _show_shared_product(update: Update, context: ContextTypes.DEFAULT_TYP
     images = product.get("images") or []
     webapp_url = f"{WEBAPP_URL}/product/{slug}"
 
-    caption = (
-        f"🛍 <b>{name}</b>\n\n"
-        f"💰 <b>{price} сум</b>\n"
-        f"📦 {stock_text}\n"
-    )
+    lines = [f"💰 <b>{price} сум</b>", f"📦 {stock_text}"]
     if description:
         desc_short = description[:300] + ("..." if len(description) > 300 else "")
-        caption += f"\n📝 {desc_short}\n"
+        lines.append(f"\n📝 {desc_short}")
+
+    caption = (
+        f"🛍 <b>{name}</b>\n\n"
+        + "\n".join(lines)
+        + "\n\n━━━━━━━━━━━━━━━━"
+    )
 
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton("🛒 Открыть в каталоге", web_app=WebAppInfo(url=webapp_url))]]
     )
 
-    if images:
-        try:
-            from telegram import InputMediaPhoto
-            await context.bot.send_photo(
-                chat_id=update.effective_chat.id,
-                photo=get_first_photo(images),
-                caption=caption,
-                parse_mode="HTML",
-                reply_markup=keyboard,
-            )
-        except Exception:
-            await update.message.reply_text(caption, parse_mode="HTML", reply_markup=keyboard)
-    else:
-        await update.message.reply_text(caption, parse_mode="HTML", reply_markup=keyboard)
+    await send_photo_with_fallback(update, context, images, caption, keyboard)
 
 
 async def cmd_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "📋 <b>Главное меню</b>\n\nВыберите действие:",
+        "📋 <b>Главное меню</b>\n\n"
+        "━━━━━━━━━━━━━━━━\n"
+        "Выберите действие:",
         parse_mode="HTML",
         reply_markup=main_menu_keyboard(),
     )
@@ -225,16 +279,14 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/faq — Часто задаваемые вопросы\n"
         "/about — О магазине\n"
         "/help — Эта справка\n\n"
-        "─────────────────\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
         "🛍 <b>Магазин:</b>\n"
-        "Нажми «Открыть магазин» внизу экрана\n"
-        "для перехода в каталог товаров.\n\n"
+        "Нажмите «Открыть магазин» для каталога.\n\n"
         "📦 <b>Заказы:</b>\n"
-        "Статус заказов доступен в разделе «Мои заказы».\n\n"
+        "Статус заказов в разделе «Мои заказы».\n\n"
         "🔔 <b>Уведомления:</b>\n"
-        "Мы уведомляем о статусе заказов,\n"
-        "скидках и акциях.\n\n"
-        "💬 Вопросы? Пиши в поддержку!"
+        "О статусе заказов, скидках и акциях.\n\n"
+        "💬 Вопросы? Пишите в поддержку!"
     )
     await update.message.reply_text(
         text, parse_mode="HTML", reply_markup=main_menu_keyboard()
@@ -251,7 +303,8 @@ async def cmd_orders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not orders:
         text = (
             "📦 <b>Мои заказы</b>\n\n"
-            "У вас пока нет заказов.\n\n"
+            "━━━━━━━━━━━━━━━━\n\n"
+            "У вас пока нет заказов.\n"
             "Откройте каталог и сделайте первый заказ! 🛍"
         )
         keyboard = InlineKeyboardMarkup(
@@ -283,51 +336,40 @@ async def cmd_orders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         short_id = order["id"][:8].upper()
         status = STATUS_LABELS.get(order["status"], order["status"])
         amount = format_price(order.get("total_amount", 0))
-        date_str = order["created_at"][:10]
+        date_raw = order["created_at"][:10]
         items = order.get("items") or []
 
-        first_image = None
-        item_names = []
-        for item in items[:3]:
-            item_names.append(get_localized_name(item.get("name")))
-            if not first_image and item.get("image"):
-                url = item["image"]
-                clean = url.split('?')[0]
-                ext = clean.rsplit('.', 1)[-1].lower() if '.' in clean.rsplit('/', 1)[-1] else ''
-                if ext in SUPPORTED_PHOTO_EXTS:
-                    first_image = url
+        order_images = []
+        item_lines = []
+        for item in items[:5]:
+            name = get_localized_name(item.get("name"))
+            qty = item.get("quantity", 1)
+            item_text = f"• {name}"
+            if qty > 1:
+                item_text += f" × {qty}"
+            item_lines.append(item_text)
+            if item.get("image"):
+                order_images.append(item["image"])
+        logger.info("ORDERS DEBUG: order=%s order_images=%s", short_id, repr(order_images)[:300])
 
-        items_text = ", ".join(item_names) if item_names else "Нет товаров"
-        if len(items) > 3:
-            items_text += f" и ещё {len(items) - 3}"
+        if len(items) > 5:
+            item_lines.append(f"• ...и ещё {len(items) - 5}")
+
+        items_text = "\n".join(item_lines) if item_lines else "• Нет товаров"
 
         caption = (
-            f"📦 <b>Заказ #{short_id}</b>\n"
-            f"Статус: {status}\n"
-            f"📅 {date_str}  💰 {amount} сум\n\n"
-            f"🛍 {items_text}"
+            f"📦 <b>Заказ #{short_id}</b>\n\n"
+            f"{status}\n"
+            f"📅 {date_raw}  •  💰 {amount} сум\n\n"
+            f"{items_text}\n\n"
+            f"━━━━━━━━━━━━━━━━"
         )
 
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("🛒 Открыть магазин", web_app=WebAppInfo(url=WEBAPP_URL))]]
         )
 
-        if first_image:
-            try:
-                await context.bot.send_photo(
-                    chat_id=update.effective_chat.id,
-                    photo=first_image,
-                    caption=caption,
-                    parse_mode="HTML",
-                    reply_markup=keyboard,
-                )
-                continue
-            except Exception:
-                pass
-
-        await update.message.reply_text(
-            caption, parse_mode="HTML", reply_markup=keyboard
-        )
+        await send_photo_with_fallback(update, context, order_images, caption, keyboard)
 
 
 async def cmd_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -340,8 +382,9 @@ async def cmd_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if not favorites:
         text = (
             "❤️ <b>Избранное</b>\n\n"
-            "У вас пока нет избранных товаров.\n\n"
-            "Добавляйте товары в избранное — нажмите на сердечко ❤️"
+            "━━━━━━━━━━━━━━━━\n\n"
+            "У вас пока нет избранных товаров.\n"
+            "Добавляйте товары — нажмите на сердечко ❤️"
         )
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("🛍 Открыть каталог", web_app=WebAppInfo(url=WEBAPP_URL))]]
@@ -360,19 +403,19 @@ async def cmd_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         slug = product.get("slug", "")
         stock = product.get("stock", 0)
         images = product.get("images") or []
-        stock_text = f"✅ В наличии" if stock > 0 else "❌ Нет в наличии"
+        logger.info("FAVORITES DEBUG: product=%s slug=%s images=%s", name, slug, repr(images)[:300])
+        stock_text = "✅ В наличии" if stock > 0 else "❌ Нет в наличии"
 
-        notifs = []
+        lines = [f"💰 {price} сум", f"📦 {stock_text}"]
         if product.get("notify_price"):
-            notifs.append("🔔 Скидка")
+            lines.append("🔔 Уведомить о скидке")
         if product.get("notify_stock"):
-            notifs.append("🔔 Наличие")
-        notif_text = f"\n{'  '.join(notifs)}" if notifs else ""
+            lines.append("🔔 Уведомить о наличии")
 
         caption = (
-            f"❤️ <b>{name}</b>\n"
-            f"💰 {price} сум\n"
-            f"📦 {stock_text}{notif_text}"
+            f"❤️ <b>{name}</b>\n\n"
+            + "\n".join(lines)
+            + "\n\n━━━━━━━━━━━━━━━━"
         )
 
         webapp_url = f"{WEBAPP_URL}/product/{slug}" if slug else WEBAPP_URL
@@ -380,22 +423,7 @@ async def cmd_favorites(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             [[InlineKeyboardButton("🛒 Открыть товар", web_app=WebAppInfo(url=webapp_url))]]
         )
 
-        if images:
-            try:
-                await context.bot.send_photo(
-                    chat_id=update.effective_chat.id,
-                    photo=get_first_photo(images),
-                    caption=caption,
-                    parse_mode="HTML",
-                    reply_markup=keyboard,
-                )
-                continue
-            except Exception:
-                pass
-
-        await update.message.reply_text(
-            caption, parse_mode="HTML", reply_markup=keyboard
-        )
+        await send_photo_with_fallback(update, context, images, caption, keyboard)
 
 
 async def cmd_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -407,9 +435,10 @@ async def cmd_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     text = (
         "📞 <b>Служба поддержки</b>\n\n"
-        "Напишите ваше сообщение, и мы ответим вам в ближайшее время.\n\n"
-        "⏰ Время ответа: до 24 часов\n"
-        "📌 Для завершения диалога нажмите кнопку ниже"
+        "━━━━━━━━━━━━━━━━\n\n"
+        "Напишите сообщение — ответим в ближайшее время.\n\n"
+        "⏰ Ответ до 24 часов\n"
+        "📌 Завершить диалог — кнопка ниже"
     )
     await update.message.reply_text(
         text, parse_mode="HTML", reply_markup=support_keyboard()
@@ -420,37 +449,29 @@ async def cmd_faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = (
         "❓ <b>Часто задаваемые вопросы</b>\n\n"
 
-        "─────────────────\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
 
         "📦 <b>Доставка</b>\n"
-        "Доставка осуществляется по всему Узбекистану.\n"
-        "Стандартная доставка: 1-3 дня.\n"
-        "Экспресс-доставка: в тот же день (по Ташкенту).\n"
-        "Бесплатная доставка при заказе от 500 000 сум.\n\n"
+        "По всему Узбекистану, 1-3 дня.\n"
+        "Экспресс по Ташкенту — в тот же день.\n"
+        "Бесплатно при заказе от 500 000 сум.\n\n"
 
-        "─────────────────\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
 
-        "💳 <b>Способы оплаты</b>\n"
-        "• Наличные при получении\n"
-        "• Payme\n"
-        "• Click\n"
-        "• Uzum Bank\n\n"
+        "💳 <b>Оплата</b>\n"
+        "Наличные • Payme • Click • Uzum Bank\n\n"
 
-        "─────────────────\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
 
-        "↩️ <b>Возврат товара</b>\n"
-        "Вы можете вернуть товар в течение 14 дней\n"
-        "с момента доставки. Перейдите в «Мои заказы»\n"
-        "и нажмите «Запросить возврат».\n\n"
+        "↩️ <b>Возврат</b>\n"
+        "В течение 14 дней через «Мои заказы».\n\n"
 
-        "─────────────────\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
 
-        "⏰ <b>Сроки доставки</b>\n"
-        "• По Ташкенту: 1-2 дня\n"
-        "• По регионам: 2-5 дней\n"
-        "• Экспресс (Ташкент): в тот же день\n\n"
+        "⏰ <b>Сроки</b>\n"
+        "Ташкент: 1-2 дня • Регионы: 2-5 дней\n\n"
 
-        "─────────────────\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
 
         "📞 <b>Контакты</b>\n"
         "Telegram: @one_shop\n"
@@ -464,18 +485,17 @@ async def cmd_faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def cmd_about(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = (
         "ℹ️ <b>ONE</b>\n\n"
-        "Мы — магазин модной одежды и аксессуаров,\n"
-        "который делает стиль доступным для каждого\n"
-        "жителя Узбекистана.\n\n"
-        "─────────────────\n\n"
-        "🎯 <b>Наша миссия</b>\n"
-        "Предлагать качественные товары по доступным ценам,\n"
-        "работая напрямую с производителями.\n\n"
-        "─────────────────\n\n"
-        "🌐 <b>Ссылки:</b>\n"
-        "• Сайт: one.uz\n"
-        "• Telegram: @one_shop\n"
-        "• Email: info@one.uz"
+        "Модная одежда и аксессуары\n"
+        "для каждого жителя Узбекистана.\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
+        "🎯 <b>Миссия</b>\n"
+        "Качественные товары по доступным ценам,\n"
+        "напрямую от производителей.\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
+        "🌐 <b>Ссылки</b>\n"
+        "• one.uz\n"
+        "• @one_shop\n"
+        "• info@one.uz"
     )
     keyboard = InlineKeyboardMarkup(
         [
@@ -537,18 +557,25 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     data = query.data
 
     if data == "back_to_menu":
-        await query.edit_message_text(
-            "📋 <b>Главное меню</b>\n\nВыберите действие:",
-            parse_mode="HTML",
-        )
+        try:
+            await query.edit_message_text(
+                "📋 <b>Главное меню</b>\n\nВыберите действие:",
+                parse_mode="HTML",
+            )
+        except Exception:
+            await query.message.reply_text(
+                "📋 <b>Главное меню</b>\n\nВыберите действие:",
+                parse_mode="HTML",
+                reply_markup=main_menu_keyboard(),
+            )
 
     elif data == "support_exit":
         user = update.effective_user
         if user:
             _support_mode.pop(user.id, None)
         await query.edit_message_text(
-            "✅ Диалог с поддержкой завершён.\n\n"
-            "Если нужно, напишите /support снова.",
+            "✅ Диалог завершён.\n\n"
+            "Нужна помощь? /support",
             parse_mode="HTML",
         )
 
@@ -562,6 +589,8 @@ async def handle_any_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = update.effective_user
     if not user:
         return
+
+    _cleanup_support_mode()
 
     db.save_user(
         chat_id=user.id,
@@ -597,11 +626,11 @@ async def handle_any_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         admin_text = (
             "💬 <b>Новое сообщение от пользователя</b>\n\n"
-            f"👤 Пользователь: {display_name}\n"
-            f"🆔 ID: <code>{user.id}</code>\n"
-            f"─────────────────\n"
+            f"👤 {display_name}\n"
+            f"🆔 <code>{user.id}</code>\n"
+            f"━━━━━━━━━━━━━━━━\n"
             f"{update.message.text or '(медиа)'}\n\n"
-            f"💡 Ответ: <code>/reply {user.id} Текст ответа</code>"
+            f"💡 Ответ: <code>/reply {user.id} Текст</code>"
         )
 
         try:
@@ -652,14 +681,16 @@ async def cmd_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     if result.queued:
         report = (
-            f"📋 <b>Рассылка поставлена в очередь</b>\n\n"
+            f"📋 <b>Рассылка в очереди</b>\n\n"
+            f"━━━━━━━━━━━━━━━━\n\n"
             f"📊 Получателей: {result.total}\n"
-            f"🆔 Job ID: <code>{result.job_id}</code>\n\n"
-            f"Обработка начнётся автоматически."
+            f"🆔 <code>{result.job_id}</code>\n\n"
+            f"Обработка автоматически."
         )
     else:
         report = (
             f"✅ <b>Рассылка завершена</b>\n\n"
+            f"━━━━━━━━━━━━━━━━\n\n"
             f"📊 Всего: {result.total}\n"
             f"✓ Доставлено: {result.success}\n"
             f"🚫 Заблокировали: {result.blocked}\n"
@@ -685,11 +716,12 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     text = (
         "📊 <b>Статистика ONE Bot</b>\n\n"
+        "━━━━━━━━━━━━━━━━\n\n"
         f"👥 Подписчиков: <b>{user_count}</b>\n"
         f"📦 Всего заказов: <b>{orders_count}</b>\n"
         f"🔄 Ожидают возврата: <b>{returns_count}</b>\n"
-        f"💬 Непрочитанных сообщений: <b>{unread_msgs}</b>\n\n"
-        f"🕐 Обновлено: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+        f"💬 Непрочитанных: <b>{unread_msgs}</b>\n\n"
+        f"🕐 {datetime.now().strftime('%d.%m.%Y %H:%M')}"
     )
     await update.message.reply_text(text, parse_mode="HTML")
 
@@ -712,8 +744,22 @@ async def post_init(app: Application) -> None:
     logger.info("Bot commands set.")
 
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    logger.error("Unhandled exception", exc_info=context.error)
+    if isinstance(update, Update) and update.effective_chat:
+        try:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="⚠️ Произошла ошибка. Попробуйте позже.",
+            )
+        except Exception:
+            pass
+
+
 def main() -> None:
     app = Application.builder().token(BOT_TOKEN).post_init(post_init).build()
+
+    app.add_error_handler(error_handler)
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("menu", cmd_menu))
