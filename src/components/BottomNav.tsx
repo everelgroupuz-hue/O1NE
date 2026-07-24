@@ -3,16 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from '../hooks/useTranslation';
 import { useCartStore } from '../store/useCartStore';
 import { useFavoriteIds } from '../lib/supabase/hooks';
-import { getTelegramUser } from '../lib/telegram';
-import { useAppStore } from '../store/useAppStore';
+import { useUserId } from '../hooks/useUserId';
 import { cn } from '../lib/utils';
 
 export const BottomNav = () => {
   const { t, language } = useTranslation();
   const location = useLocation();
   const totalItems = useCartStore((state) => state.getTotalItems());
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = getTelegramUser()?.id || getUserId();
+  const userId = useUserId();
   const { data: favoriteIds = [] } = useFavoriteIds(userId);
 
   const navItems = [

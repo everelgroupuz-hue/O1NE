@@ -5,8 +5,7 @@ import { ProductCard } from '../components/ProductCard';
 import { ProductCardSkeleton } from '../components/Skeleton';
 import { useTranslation } from '../hooks/useTranslation';
 import { useFavorites } from '../lib/supabase/hooks';
-import { getTelegramUser } from '../lib/telegram';
-import { useAppStore } from '../store/useAppStore';
+import { useUserId } from '../hooks/useUserId';
 import type { Database } from '../lib/supabase';
 
 type Product = Database['public']['Tables']['products']['Row'];
@@ -15,8 +14,7 @@ type FavoriteProduct = Product & { favoriteId: string; notify_price: boolean; no
 export const Favorites = () => {
   const { t, language } = useTranslation();
   const navigate = useNavigate();
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = getTelegramUser()?.id || getUserId();
+  const userId = useUserId();
   const { data: favorites = [], isLoading } = useFavorites(userId);
 
   const hasNotifications = favorites.some((f: FavoriteProduct) => f.notify_price || f.notify_stock);

@@ -5,8 +5,8 @@ import { Layout } from '../components/Layout';
 import { useTranslation } from '../hooks/useTranslation';
 import { useCartStore } from '../store/useCartStore';
 import { useProduct, useIncrementViews, useProductReviews, useProductRating, useFavoriteIds, useToggleFavorite, useCreateReview, useUploadReviewPhoto, useTrackProductEvent } from '../lib/supabase/hooks';
-import { getTelegramUser, haptic } from '../lib/telegram';
-import { useAppStore } from '../store/useAppStore';
+import { haptic } from '../lib/telegram';
+import { useUserId } from '../hooks/useUserId';
 import { formatPrice, getLocalizedValue } from '../lib/utils';
 import { WishlistToggle } from '../components/WishlistToggle';
 import { ShareCard } from '../components/ShareCard';
@@ -18,8 +18,7 @@ export const ProductDetail = () => {
   const { t, language } = useTranslation();
   const addItem = useCartStore((state) => state.addItem);
 
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = getTelegramUser()?.id || getUserId();
+  const userId = useUserId();
   const { data: favoriteIds = [] } = useFavoriteIds(userId);
   const toggleFavorite = useToggleFavorite(userId);
 

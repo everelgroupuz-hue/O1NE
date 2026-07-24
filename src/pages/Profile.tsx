@@ -10,6 +10,7 @@ import { Layout } from '../components/Layout';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAppStore } from '../store/useAppStore';
 import { getTelegramUser } from '../lib/telegram';
+import { useUserId } from '../hooks/useUserId';
 import { useOrders, useUserProfile, useUpdateProfile, useUserReturns } from '../lib/supabase/hooks';
 import { formatPrice } from '../lib/utils';
 import { toast } from '../components/Toast';
@@ -25,8 +26,7 @@ export const Profile = () => {
   const navigate = useNavigate();
   const { registeredName, registeredPhone } = useAppStore();
   const user = getTelegramUser();
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = user?.id || getUserId();
+  const userId = useUserId();
 
   const { data: orders = [], isLoading: ordersLoading } = useOrders(userId);
   const { data: userProfile } = useUserProfile(userId);

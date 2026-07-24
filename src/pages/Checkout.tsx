@@ -10,6 +10,7 @@ import { useAppStore } from '../store/useAppStore';
 import { useCreatePayment, useDeliveryZones, useUserProfile, useUpdateProfile } from '../lib/supabase/hooks';
 import { formatPrice, getLocalizedValue, validatePhone } from '../lib/utils';
 import { haptic, tg, refreshTg } from '../lib/telegram';
+import { useUserId } from '../hooks/useUserId';
 import { toast } from '../components/Toast';
 import type { DeliveryZone } from '../lib/supabase/queries';
 
@@ -18,11 +19,9 @@ export const Checkout = () => {
   const navigate = useNavigate();
   const { items, getTotalPrice, clearCart } = useCartStore();
   const setTelegramUserId = useAppStore((state) => state.setTelegramUserId);
-  const getUserId = useAppStore((state) => state.getUserId);
 
-  useEffect(() => { refreshTg(); }, []);
   const user = tg?.initDataUnsafe?.user;
-  const userId = user?.id || getUserId();
+  const userId = useUserId();
 
   useEffect(() => {
     if (user?.id) {
@@ -32,7 +31,7 @@ export const Checkout = () => {
 
   const createPaymentMutation = useCreatePayment();
   const { data: deliveryZones = [], isLoading: zonesLoading } = useDeliveryZones(true);
-  const { data: userProfile } = useUserProfile(userId || getUserId());
+  const { data: userProfile } = useUserProfile(userId);
   const updateProfileMutation = useUpdateProfile();
 
   const [step, setStep] = useState<'info' | 'delivery' | 'payment'>('info');
@@ -137,7 +136,7 @@ export const Checkout = () => {
     try {
       refreshTg();
       const freshUser = tg?.initDataUnsafe?.user;
-      const finalUserId = freshUser?.id || getUserId();
+      const finalUserId = freshUser?.id || userId;
       if (!finalUserId) {
         toast.error(language === 'ru' ? 'Пожалуйста, зарегистрируйтесь' : "Iltimos, ro'yxatdan o'ting");
         setLoading(false);

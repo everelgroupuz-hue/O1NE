@@ -58,6 +58,7 @@ export const AdminMessages = () => {
     if (selectedOrder && admin) {
       markRead.mutate({ order_id: selectedOrder, sender_id: admin?.id ?? 'admin' });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOrder, admin]);
 
   const handleSend = async () => {

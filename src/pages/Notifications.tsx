@@ -1,12 +1,10 @@
 import { Layout } from '../components/Layout';
 import { NotificationCenter } from '../components/NotificationCenter';
-import { getTelegramUser } from '../lib/telegram';
-import { useAppStore } from '../store/useAppStore';
+import { useUserId } from '../hooks/useUserId';
 import { useTranslation } from '../hooks/useTranslation';
 
 export const Notifications = () => {
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = getTelegramUser()?.id || getUserId();
+  const userId = useUserId();
   const { language } = useTranslation();
 
   return (

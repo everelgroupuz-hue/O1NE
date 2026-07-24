@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Bell, Package, Tag, AlertCircle, Trash2, TrendingDown, ShoppingCart, MessageSquare, RotateCcw } from 'lucide-react';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useClearReadNotifications } from '../lib/supabase/hooks';
-import { getTelegramUser } from '../lib/telegram';
-import { useAppStore } from '../store/useAppStore';
+import { useUserId } from '../hooks/useUserId';
 import { useTranslation } from '../hooks/useTranslation';
 
 const NOTIFICATION_ICONS: Record<string, typeof Bell> = {
@@ -66,8 +65,7 @@ function getNotificationRoute(type: string, data: Record<string, unknown> | null
 }
 
 export const NotificationCenter = () => {
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = getTelegramUser()?.id || getUserId();
+  const userId = useUserId();
   const { data: notifications = [] } = useNotifications(userId);
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead(userId);

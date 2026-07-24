@@ -112,6 +112,7 @@ export const MapPicker = ({ isOpen, onClose, onConfirm, initialLat, initialLng }
       mapInstanceRef.current = null;
       markerRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleDetectLocation = () => {

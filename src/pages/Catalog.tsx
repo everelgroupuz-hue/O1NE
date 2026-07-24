@@ -8,14 +8,12 @@ import { CollectionSection } from '../components/CollectionSection';
 import { useTranslation } from '../hooks/useTranslation';
 import { useDebounce } from '../hooks/useDebounce';
 import { useProducts, useCategories, useBanners, useCollections, useFavoriteIds } from '../lib/supabase/hooks';
-import { getTelegramUser } from '../lib/telegram';
-import { useAppStore } from '../store/useAppStore';
+import { useUserId } from '../hooks/useUserId';
 import { getLocalizedValue, cn } from '../lib/utils';
 
 export const Catalog = () => {
   const { t, language } = useTranslation();
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = getTelegramUser()?.id || getUserId();
+  const userId = useUserId();
   const { data: favoriteIds = [] } = useFavoriteIds(userId);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [searchQuery, setSearchQuery] = useState('');

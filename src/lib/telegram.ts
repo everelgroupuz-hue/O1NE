@@ -77,9 +77,10 @@ declare global {
   }
 }
 
-let _tg: typeof window.Telegram.WebApp | undefined = undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _tg: any = undefined;
 
-export function refreshTg(): typeof window.Telegram.WebApp | undefined {
+export function refreshTg() {
   _tg = typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined;
   return _tg;
 }

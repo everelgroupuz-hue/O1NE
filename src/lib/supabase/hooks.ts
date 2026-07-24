@@ -758,7 +758,7 @@ export const useSendMessage = () => {
     },
     onMutate: async (params) => {
       await queryClient.cancelQueries({ queryKey: ['messages', params.order_id] });
-      const prev = queryClient.getQueryData(['messages', params.order_id]) ?? [];
+      const prev = (queryClient.getQueryData(['messages', params.order_id]) ?? []) as unknown[];
       const optimisticMessage = {
         id: `temp-${Date.now()}`,
         order_id: params.order_id,

@@ -5,8 +5,8 @@ import { WishlistToggle } from './WishlistToggle';
 import { getLocalizedValue, formatPrice } from '../lib/utils';
 import { useCartStore } from '../store/useCartStore';
 import { useFavoriteIds, useToggleFavorite, useTrackProductEvent } from '../lib/supabase/hooks';
-import { getTelegramUser, haptic } from '../lib/telegram';
-import { useAppStore } from '../store/useAppStore';
+import { haptic } from '../lib/telegram';
+import { useUserId } from '../hooks/useUserId';
 import { toast } from './Toast';
 import type { Database } from '../lib/supabase';
 
@@ -26,8 +26,7 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
   const [imageLoaded, setImageLoaded] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
 
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = getTelegramUser()?.id || getUserId();
+  const userId = useUserId();
   const { data: hookFavoriteIds = [] } = useFavoriteIds(userId);
   const favoriteIds = favoriteIdsProp ?? hookFavoriteIds;
   const toggleFavorite = useToggleFavorite(userId);

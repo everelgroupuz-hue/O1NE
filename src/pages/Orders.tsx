@@ -10,8 +10,8 @@ import { useCartStore } from '../store/useCartStore';
 import { useOrders } from '../lib/supabase/hooks';
 import { supabase } from '../lib/supabase';
 import { formatPrice, getLocalizedValue, formatDateTime } from '../lib/utils';
-import { getTelegramUser, haptic } from '../lib/telegram';
-import { useAppStore } from '../store/useAppStore';
+import { haptic } from '../lib/telegram';
+import { useUserId } from '../hooks/useUserId';
 import { getStatusColor, getStatusLabel } from '../lib/orderStatuses';
 import { returnQueries } from '../lib/supabase/queries';
 import { useUploadReturnPhoto } from '../lib/supabase/hooks';
@@ -26,9 +26,7 @@ export const Orders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
-  const user = getTelegramUser();
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = user?.id || getUserId();
+  const userId = useUserId();
 
   const { data: orders = [], isLoading } = useOrders(userId);
   const [searchQuery, setSearchQuery] = useState('');

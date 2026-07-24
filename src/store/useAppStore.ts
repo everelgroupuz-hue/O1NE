@@ -65,7 +65,6 @@ export const useAppStore = create<AppStore>()(
       onRehydrateStorage: () => (state) => {
         if (state && state.theme !== 'light') {
           state.theme = 'light';
-          set({ theme: 'light' });
         }
         applyTheme();
       },

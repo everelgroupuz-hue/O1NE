@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Heart, BellOff, BellRing, Loader2, TrendingDown, ShoppingCart } from 'lucide-react';
 import { useFavoritePrefs, useUpdateFavoritePrefs } from '../lib/supabase/hooks';
-import { getTelegramUser, haptic } from '../lib/telegram';
-import { useAppStore } from '../store/useAppStore';
+import { haptic } from '../lib/telegram';
+import { useUserId } from '../hooks/useUserId';
 import { toast } from './Toast';
 import { Portal } from './Portal';
 import { BottomSheet } from './BottomSheet';
@@ -23,8 +23,7 @@ export const WishlistToggle = ({
   language,
   variant = 'card',
 }: WishlistToggleProps) => {
-  const getUserId = useAppStore((s) => s.getUserId);
-  const userId = getTelegramUser()?.id || getUserId();
+  const userId = useUserId();
   const { data: prefs } = useFavoritePrefs(userId, productId);
   const updatePrefs = useUpdateFavoritePrefs(userId);
   const [showPrefs, setShowPrefs] = useState(false);

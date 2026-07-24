@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { getTelegramUser, tg, refreshTg } from '../lib/telegram';
+import { getTelegramUser, tg } from '../lib/telegram';
+import { useUserId } from '../hooks/useUserId';
 import { ChevronRight, Sparkles, TrendingUp, Shield, Truck, Send } from 'lucide-react';
 import { useProducts, useBanners, useFavoriteIds } from '../lib/supabase/hooks';
 import { SplashScreen } from '../components/SplashScreen';
@@ -11,13 +12,12 @@ import { ProductCardSkeleton } from '../components/Skeleton';
 
 export const Home = () => {
   const navigate = useNavigate();
-  const { language, setLanguage, setTelegramUserId, isRegistered, getUserId } = useAppStore();
+  const { language, setLanguage, setTelegramUserId, isRegistered } = useAppStore();
   const [splashDone, setSplashDone] = useState(false);
   const [entered, setEntered] = useState(false);
 
-  useEffect(() => { refreshTg(); }, []);
   const user = getTelegramUser();
-  const userId = user?.id || getUserId();
+  const userId = useUserId();
   const { data: favoriteIds = [] } = useFavoriteIds(userId);
   const { data: banners = [] } = useBanners(true);
   const { data: productsData, isLoading: productsLoading } = useProducts(
@@ -34,6 +34,7 @@ export const Home = () => {
         setLanguage(langCode);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, setLanguage, setTelegramUserId]);
 
   const handleSplashComplete = useCallback(() => {

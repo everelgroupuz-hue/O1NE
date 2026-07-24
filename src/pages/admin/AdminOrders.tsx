@@ -107,10 +107,12 @@ export const AdminOrders = () => {
 
       const telegramIds = [...new Set(ordersData.map(o => o.telegram_user_id).filter(Boolean))];
       if (telegramIds.length > 0) {
-        const { data: users } = await adminQueries.getUsers() as Array<{ telegram_id: number; first_name: string; username: string | null; phone: string | null }> | null;
-        if (users) {
+        type UserRow = { telegram_id: number; first_name: string; username: string | null; phone: string | null };
+        const usersData = await adminQueries.getUsers();
+        const users: UserRow[] = Array.isArray(usersData) ? usersData : [];
+        if (users.length > 0) {
           const map: Record<number, { first_name: string; username: string | null; phone: string | null }> = {};
-          users.filter(u => telegramIds.includes(u.telegram_id)).forEach(u => { map[u.telegram_id] = { first_name: u.first_name, username: u.username, phone: u.phone }; });
+          users.filter((u: UserRow) => telegramIds.includes(u.telegram_id)).forEach((u: UserRow) => { map[u.telegram_id] = { first_name: u.first_name, username: u.username, phone: u.phone }; });
           setUserMap(map);
         }
       }
