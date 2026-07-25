@@ -431,7 +431,10 @@ export const useFavoriteIds = (telegramUserId: number) => {
     queryKey: ['favorite_ids', telegramUserId],
     queryFn: () => favoriteQueries.getProductIds(telegramUserId),
     enabled: telegramUserId > 0,
-    staleTime: 1000 * 60,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 };
 
@@ -461,7 +464,9 @@ export const useToggleFavorite = (telegramUserId: number) => {
         queryClient.setQueryData(['favorite_ids', telegramUserId], ctx.prev);
       }
     },
-    onSettled: () => {
+    onSuccess: async () => {
+      const freshIds = await favoriteQueries.getProductIds(telegramUserId);
+      queryClient.setQueryData<string[]>(['favorite_ids', telegramUserId], freshIds);
       queryClient.invalidateQueries({ queryKey: ['favorites', telegramUserId] });
     },
   });
