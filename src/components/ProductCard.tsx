@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Check } from 'lucide-react';
 import { WishlistToggle } from './WishlistToggle';
@@ -29,16 +29,18 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
   const userId = useUserId();
   const toggleFavorite = useToggleFavorite(userId);
 
-  const serverFavorite = (favoriteIdsProp ?? []).includes(product.id);
-  const pendingValue = useRef<boolean | null>(null);
+  const [isFavorite, setIsFavorite] = useState(() => (favoriteIdsProp ?? []).includes(product.id));
 
   useEffect(() => {
-    if (pendingValue.current !== null && serverFavorite === pendingValue.current) {
-      pendingValue.current = null;
-    }
-  }, [serverFavorite]);
+    setIsFavorite((favoriteIdsProp ?? []).includes(product.id));
+  }, [favoriteIdsProp, product.id]);
 
-  const isFavorite = pendingValue.current !== null ? pendingValue.current : serverFavorite;
+  const handleToggleFavorite = useCallback(() => {
+    setIsFavorite(prev => {
+      toggleFavorite.mutate({ productId: product.id, isFavorite: !prev });
+      return !prev;
+    });
+  }, [toggleFavorite, product.id]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -57,16 +59,6 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
     setJustAdded(true);
     toast.success(language === 'ru' ? 'Добавлено в корзину' : "Savatga qo'shildi");
     setTimeout(() => setJustAdded(false), 1500);
-  };
-
-  const handleToggleFavorite = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (pendingValue.current !== null) return;
-    const newState = !isFavorite;
-    pendingValue.current = newState;
-    toggleFavorite.mutate(
-      { productId: product.id, isFavorite: !newState },
-    );
   };
 
   return (
