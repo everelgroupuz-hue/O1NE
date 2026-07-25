@@ -30,16 +30,15 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
   const toggleFavorite = useToggleFavorite(userId);
 
   const serverFavorite = (favoriteIdsProp ?? []).includes(product.id);
-  const [localFavorite, setLocalFavorite] = useState(serverFavorite);
-  const togglePending = useRef(false);
+  const pendingValue = useRef<boolean | null>(null);
 
   useEffect(() => {
-    if (!togglePending.current) {
-      setLocalFavorite(serverFavorite);
+    if (pendingValue.current !== null && serverFavorite === pendingValue.current) {
+      pendingValue.current = null;
     }
   }, [serverFavorite]);
 
-  const isFavorite = togglePending.current ? localFavorite : serverFavorite;
+  const isFavorite = pendingValue.current !== null ? pendingValue.current : serverFavorite;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -62,17 +61,11 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
 
   const handleToggleFavorite = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (togglePending.current) return;
-    togglePending.current = true;
-    const newState = !localFavorite;
-    setLocalFavorite(newState);
+    if (pendingValue.current !== null) return;
+    const newState = !isFavorite;
+    pendingValue.current = newState;
     toggleFavorite.mutate(
-      { productId: product.id, isFavorite: localFavorite },
-      {
-        onSettled: () => {
-          togglePending.current = false;
-        },
-      }
+      { productId: product.id, isFavorite: !newState },
     );
   };
 
