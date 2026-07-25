@@ -77,6 +77,7 @@ export default {
         'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
         'float': 'float 3s ease-in-out infinite',
         'wiggle': 'wiggle 0.5s ease-in-out',
+        'heart-pulse': 'heartPulse 0.3s ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -124,6 +125,11 @@ export default {
           '0%, 100%': { transform: 'rotate(0deg)' },
           '25%': { transform: 'rotate(-3deg)' },
           '75%': { transform: 'rotate(3deg)' },
+        },
+        heartPulse: {
+          '0%': { transform: 'scale(1)' },
+          '30%': { transform: 'scale(1.3)' },
+          '100%': { transform: 'scale(1)' },
         },
       },
       backdropBlur: {

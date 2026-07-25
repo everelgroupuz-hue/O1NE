@@ -14,6 +14,7 @@ interface WishlistToggleProps {
   onToggleFavorite: (e?: any) => void;
   language: 'ru' | 'uz';
   variant?: 'card' | 'detail';
+  pulse?: boolean;
 }
 
 export const WishlistToggle = ({
@@ -22,6 +23,7 @@ export const WishlistToggle = ({
   onToggleFavorite,
   language,
   variant = 'card',
+  pulse = false,
 }: WishlistToggleProps) => {
   const userId = useUserId();
   const { data: prefs } = useFavoritePrefs(userId, productId);
@@ -334,7 +336,7 @@ export const WishlistToggle = ({
 
       <button
         onClick={handleToggle}
-        className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm transition-all duration-150 hover:scale-110 active:scale-90"
+        className={`w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm transition-all duration-150 hover:scale-110 active:scale-90 ${pulse ? 'animate-heart-pulse' : ''}`}
       >
         <Heart
           className={`w-4 h-4 transition-all duration-150 ${

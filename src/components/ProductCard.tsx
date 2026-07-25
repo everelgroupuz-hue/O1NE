@@ -30,17 +30,20 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
   const toggleFavorite = useToggleFavorite(userId);
 
   const [isFavorite, setIsFavorite] = useState(() => (favoriteIdsProp ?? []).includes(product.id));
+  const [pulsing, setPulsing] = useState(false);
 
   useEffect(() => {
     setIsFavorite((favoriteIdsProp ?? []).includes(product.id));
   }, [favoriteIdsProp, product.id]);
 
   const handleToggleFavorite = useCallback(() => {
-    setIsFavorite(prev => {
-      toggleFavorite.mutate({ productId: product.id, isFavorite: !prev });
-      return !prev;
-    });
-  }, [toggleFavorite, product.id]);
+    const newState = !isFavorite;
+    setIsFavorite(newState);
+    setPulsing(true);
+    haptic.select();
+    toggleFavorite.mutate({ productId: product.id, isFavorite });
+    setTimeout(() => setPulsing(false), 300);
+  }, [isFavorite, toggleFavorite, product.id]);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -97,6 +100,7 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
           onToggleFavorite={handleToggleFavorite}
           language={language}
           variant="card"
+          pulse={pulsing}
         />
 
         {/* Quick add — always visible on mobile */}
