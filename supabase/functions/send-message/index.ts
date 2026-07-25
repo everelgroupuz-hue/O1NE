@@ -120,6 +120,7 @@ Deno.serve(async (req: Request) => {
       const chatIds = [...new Set(favorites.map((f) => f.telegram_user_id))];
       let sent = 0;
       let errors = 0;
+      const failedChats: { chatId: number; error: string }[] = [];
 
       for (const chatId of chatIds) {
         try {
@@ -143,16 +144,22 @@ Deno.serve(async (req: Request) => {
           if (response.ok) {
             sent++;
           } else {
+            const errBody = await response.json().catch(() => ({}));
+            const errDesc = (errBody as { description?: string }).description || `HTTP ${response.status}`;
+            console.error(`[send-message] Failed for chat ${chatId}: ${errDesc}`);
+            failedChats.push({ chatId, error: errDesc });
             errors++;
           }
-        } catch {
+        } catch (e) {
+          console.error(`[send-message] Exception for chat ${chatId}:`, e);
+          failedChats.push({ chatId, error: String(e) });
           errors++;
         }
         await new Promise((r) => setTimeout(r, 35));
       }
 
       return new Response(
-        JSON.stringify({ success: true, sent, errors, total: chatIds.length }),
+        JSON.stringify({ success: true, sent, errors, total: chatIds.length, failed: failedChats.length > 0 ? failedChats : undefined }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

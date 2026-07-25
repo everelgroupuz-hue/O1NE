@@ -137,12 +137,16 @@ Deno.serve(async (req: Request) => {
           if (response.ok) {
             sent++;
           } else {
+            const errBody = await response.json().catch(() => ({}));
+            const errDesc = (errBody as { description?: string }).description || `HTTP ${response.status}`;
+            console.error(`[auto-notify] Failed for chat ${chatId}: ${errDesc}`);
             errors++;
           }
         } else {
           sent++;
         }
-      } catch {
+      } catch (e) {
+        console.error(`[auto-notify] Exception for chat ${chatId}:`, e);
         errors++;
       }
       // Rate limit: 30 messages/sec max

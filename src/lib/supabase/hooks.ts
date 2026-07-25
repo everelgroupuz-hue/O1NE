@@ -462,7 +462,6 @@ export const useToggleFavorite = (telegramUserId: number) => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorite_ids', telegramUserId] });
       queryClient.invalidateQueries({ queryKey: ['favorites', telegramUserId] });
     },
   });
@@ -474,13 +473,23 @@ export const useUpdateFavoritePrefs = (telegramUserId: number) => {
   return useMutation({
     mutationFn: ({ productId, prefs }: { productId: string; prefs: { notify_price?: boolean; notify_stock?: boolean } }) =>
       favoriteQueries.updatePrefs(telegramUserId, productId, prefs),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['favorite_ids', telegramUserId] });
-      queryClient.invalidateQueries({ queryKey: ['favorites', telegramUserId] });
-      queryClient.invalidateQueries({ queryKey: ['favorite_prefs', telegramUserId, variables.productId] });
+    onMutate: async ({ productId, prefs }) => {
+      await queryClient.cancelQueries({ queryKey: ['favorite_prefs', telegramUserId, productId] });
+      const prev = queryClient.getQueryData(['favorite_prefs', telegramUserId, productId]);
+      queryClient.setQueryData(['favorite_prefs', telegramUserId, productId], (old: Record<string, boolean> | null) => ({
+        ...old,
+        ...prefs,
+      }));
+      return { prev };
     },
-    onError: (err) => {
-      console.error('Failed to update favorite prefs:', err);
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(['favorite_prefs', telegramUserId, _vars.productId], ctx.prev);
+      }
+    },
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['favorite_prefs', telegramUserId, variables.productId] });
+      queryClient.invalidateQueries({ queryKey: ['favorites', telegramUserId] });
     },
   });
 };

@@ -4,7 +4,7 @@ import { ShoppingCart, Check } from 'lucide-react';
 import { WishlistToggle } from './WishlistToggle';
 import { getLocalizedValue, formatPrice } from '../lib/utils';
 import { useCartStore } from '../store/useCartStore';
-import { useFavoriteIds, useToggleFavorite, useTrackProductEvent } from '../lib/supabase/hooks';
+import { useToggleFavorite, useTrackProductEvent } from '../lib/supabase/hooks';
 import { haptic } from '../lib/telegram';
 import { useUserId } from '../hooks/useUserId';
 import { toast } from './Toast';
@@ -27,10 +27,8 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
   const [justAdded, setJustAdded] = useState(false);
 
   const userId = useUserId();
-  const { data: hookFavoriteIds = [] } = useFavoriteIds(userId);
-  const favoriteIds = favoriteIdsProp ?? hookFavoriteIds;
   const toggleFavorite = useToggleFavorite(userId);
-  const isFavorite = favoriteIds.includes(product.id);
+  const isFavorite = (favoriteIdsProp ?? []).includes(product.id);
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();

@@ -105,7 +105,7 @@ export const AdminProducts = () => {
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
 
   const getWishlistStat = (productId: string) =>
-    wishlistStats.find((s) => s.product_id === productId) || { likes: 0, notify_price: 0, notify_stock: 0 };
+    wishlistStats.find((s: { product_id: string; likes: number; notify_price: number; notify_stock: number }) => s.product_id === productId) || { likes: 0, notify_price: 0, notify_stock: 0 };
 
   useEffect(() => {
     loadProducts();

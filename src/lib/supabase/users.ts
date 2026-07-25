@@ -130,9 +130,9 @@ export const favoriteQueries = {
 
   getProductIds: async (telegramUserId: number) => {
     if (!isSupabaseConfigured || !telegramUserId) return [] as string[];
-    const { data, error } = await supabase.from('favorites').select('product_id').eq('telegram_user_id', telegramUserId);
+    const { data, error } = await supabase.rpc('get_client_favorites', { p_telegram_user_id: telegramUserId });
     if (error) throw error;
-    return (data ?? []).map((row) => row.product_id) as string[];
+    return (data ?? []).filter((row: Record<string, unknown>) => row.id !== null).map((row: Record<string, unknown>) => row.product_id as string);
   },
 
   add: async (telegramUserId: number, productId: string) => {
@@ -190,29 +190,31 @@ export const favoriteQueries = {
 
   getPrefs: async (telegramUserId: number, productId: string) => {
     if (!isSupabaseConfigured) return null;
-    const { data } = await supabase.from('favorites').select('notify_price, notify_stock').eq('telegram_user_id', telegramUserId).eq('product_id', productId).maybeSingle();
-    return data;
+    const { data, error } = await supabase.rpc('get_client_favorites', { p_telegram_user_id: telegramUserId });
+    if (error) return null;
+    const row = (data ?? []).find((r: Record<string, unknown>) => r.product_id === productId);
+    if (!row) return null;
+    return { notify_price: row.notify_price, notify_stock: row.notify_stock };
   },
 
   getAllStats: async () => {
     if (!isSupabaseConfigured) return [];
-    const { data, error } = await supabase.from('favorites').select('product_id, notify_price, notify_stock');
+    const { data, error } = await supabase.rpc('get_favorites_stats');
     if (error) throw error;
-    const map: Record<string, { likes: number; notify_price: number; notify_stock: number }> = {};
-    (data ?? []).forEach((row) => {
-      if (!map[row.product_id]) map[row.product_id] = { likes: 0, notify_price: 0, notify_stock: 0 };
-      map[row.product_id].likes++;
-      if (row.notify_price) map[row.product_id].notify_price++;
-      if (row.notify_stock) map[row.product_id].notify_stock++;
-    });
-    return Object.entries(map).map(([product_id, stats]) => ({ product_id, ...stats }));
+    return (data ?? []).map((row: Record<string, unknown>) => ({
+      product_id: row.product_id as string,
+      likes: Number(row.likes),
+      notify_price: Number(row.notify_price),
+      notify_stock: Number(row.notify_stock),
+    }));
   },
 
   getStatsForProduct: async (productId: string) => {
     if (!isSupabaseConfigured) return { likes: 0, notify_price: 0, notify_stock: 0 };
-    const { data, error } = await supabase.from('favorites').select('notify_price, notify_stock').eq('product_id', productId);
+    const { data, error } = await supabase.rpc('get_product_favorites_stats', { p_product_id: productId });
     if (error) throw error;
-    return { likes: data?.length ?? 0, notify_price: data?.filter((r) => r.notify_price).length ?? 0, notify_stock: data?.filter((r) => r.notify_stock).length ?? 0 };
+    const row = data?.[0];
+    return { likes: Number(row?.likes ?? 0), notify_price: Number(row?.notify_price ?? 0), notify_stock: Number(row?.notify_stock ?? 0) };
   },
 
   getNotifyPriceUsers: async (productId: string) => {
