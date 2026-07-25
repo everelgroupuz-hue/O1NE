@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Check } from 'lucide-react';
 import { WishlistToggle } from './WishlistToggle';
@@ -28,7 +28,18 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
 
   const userId = useUserId();
   const toggleFavorite = useToggleFavorite(userId);
-  const isFavorite = (favoriteIdsProp ?? []).includes(product.id);
+
+  const serverFavorite = (favoriteIdsProp ?? []).includes(product.id);
+  const [localFavorite, setLocalFavorite] = useState(serverFavorite);
+  const togglePending = useRef(false);
+
+  useEffect(() => {
+    if (!togglePending.current) {
+      setLocalFavorite(serverFavorite);
+    }
+  }, [serverFavorite]);
+
+  const isFavorite = togglePending.current ? localFavorite : serverFavorite;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -49,8 +60,20 @@ export const ProductCard = memo(({ product, language, favoriteIds: favoriteIdsPr
     setTimeout(() => setJustAdded(false), 1500);
   };
 
-  const handleToggleFavorite = () => {
-    toggleFavorite.mutate({ productId: product.id, isFavorite });
+  const handleToggleFavorite = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (togglePending.current) return;
+    togglePending.current = true;
+    const newState = !localFavorite;
+    setLocalFavorite(newState);
+    toggleFavorite.mutate(
+      { productId: product.id, isFavorite: localFavorite },
+      {
+        onSettled: () => {
+          togglePending.current = false;
+        },
+      }
+    );
   };
 
   return (
