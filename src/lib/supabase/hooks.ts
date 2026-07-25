@@ -462,7 +462,6 @@ export const useToggleFavorite = (telegramUserId: number) => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['favorite_ids', telegramUserId] });
       queryClient.invalidateQueries({ queryKey: ['favorites', telegramUserId] });
     },
   });
