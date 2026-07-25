@@ -441,12 +441,10 @@ export const useToggleFavorite = (telegramUserId: number) => {
     mutationFn: async ({ productId, isFavorite }: { productId: string; isFavorite: boolean }) => {
       if (isFavorite) {
         await favoriteQueries.remove(telegramUserId, productId);
-        // Track analytics: decrease favorites count
-        await supabase.rpc('track_product_event', { p_product_id: productId, p_event_type: 'favorites', p_delta: -1 });
+        supabase.rpc('track_product_event', { p_product_id: productId, p_event_type: 'favorites', p_delta: -1 }).catch(() => {});
       } else {
         await favoriteQueries.add(telegramUserId, productId);
-        // Track analytics: increase favorites count
-        await supabase.rpc('track_product_event', { p_product_id: productId, p_event_type: 'favorites', p_delta: 1 });
+        supabase.rpc('track_product_event', { p_product_id: productId, p_event_type: 'favorites', p_delta: 1 }).catch(() => {});
       }
     },
     onMutate: async ({ productId, isFavorite }) => {
